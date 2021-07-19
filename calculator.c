@@ -1,106 +1,105 @@
+// add_op := + | -
+//   mul_op := * | /
+//   digits := {+|-} [0..9] {[0..9]}
+//   expr   := term {add_op term}
+//   term   := factor {mul_op factor}
+//   factor := digits | '(' expr ')'
+
+
 #include <stdio.h>
-#include <stdlib.h>
 #include <ctype.h>
-#include <string.h>
-#define MAXSIZE 100
+#include <stdlib.h>
 
-int stack[MAXSIZE]; 
-int top = -1; //堆疊的頂端
-int empty();
-void push(int);
-int pop();
-int calculate(char*);
+typedef int calint;
+calint expr(void);
+char token;
 
-int empty()  //判斷是否為空
+void match(char expected)
 {
-    if(top==-1)
-        return 1;
-    else
-        return 0;
-}
-void push(int data)
-{
-    if(top>=MAXSIZE)
-        printf("stak is full\n");
-    else
+    if(token==expected)
     {
-        top++;
-        stack[top] = data;
+        token = getchar();
+        return;
     }
+    fprintf(stderr,"Expected %c, got %c", expected, token);
+    exit(1);
 }
 
-int pop()
-{
-    int data;
-    if(empty())
-        printf("stack is empty\n");
-    else
-       {
-           data = stack[top];
-           top--;
-       }
-       return data;
+void error(const char *msg) {
+    fputs(msg, stderr);
+    exit(1);
 }
 
-int calculate(char *infix)
+calint factor()
 {
-    
-    int num = 0; //紀錄算式中數字
-    char sign = '+'; // 紀錄數字前符號
-    int i;
-    int n = strlen(infix);  //infix length
-    for(i=0;i<n;i++)
+    calint value;
+    if(token=='(')
     {
-        char c = infix[i];
-        if(isdigit(c)) //如果是數字讀取到num裡
+        match('(');
+        value = expr();
+        match(')');
+    }
+    else if(isdigit(token)||token=='+'||token=='-')
+    {
+        ungetc(token, stdin);
+        scanf("%d", &value);
 
+        token = getchar();
+    }
+    else 
+    {
+        error("error");
+    }
+    return value;
+}
+
+calint term()
+{
+    calint value = factor();
+    while(token=='*'||token=='/')
+    {
+        switch(token)
         {
-            num = 10 * num + (c-48);  //轉數字
+            case '*':
+                match('*');
+                value*=factor();
+                break;
+            case '/':
+                match('/');
+                value/=factor();
+                break;
+            default:
+                error("error");
         }
-
-        if(!isdigit(c) && c != ' ' || i==n-1)
-        {
-            switch(sign)
-            {
-                int pre;
-                case '+':
-                    push(num);
-                    break;
-                case '-':
-                    push(-num);
-                    break;
-                case '*':
-                    pre = stack[top];
-                    pop();
-                    push(pre*num);
-                    break;
-                case '/':
-                    pre = stack[top];
-                    pop();
-                    push(pre/num);
-                    break;
-            }
-            //更新符號和數字歸零
-            sign = c;
-            num = 0;
-        }
-        
     }
-
-    int answer = 0;
-    while(!empty())  //將剩下數自計算出
-    {
-        answer += stack[top];
-        pop();
-    }
-    return answer;
+    return value;
 }
 
-int main(int argc,char **argv)
+calint expr()
 {
-    char infix[MAXSIZE] = {'\0'};
-    printf("Input algorithm: ");
-    fgets(infix,MAXSIZE,stdin); 
-    printf("%d",calculate(infix));
-    return 0;
+    calint value = term();
+    if(token=='+'||token=='-')
+    {
+        switch(token)
+        {
+            case '+':
+                match('+');
+                value+=term();
+                break;
+            case '-':
+                match('-');
+                value-=term();
+                break;
+            default:
+            error("error");
+        }
+    }
+    return value;
+}
+
+int main(int argc, char *argv[])
+{
+    token = getchar();
+    calint result = expr();
+    printf("reslut: %d\n",result);
 }
